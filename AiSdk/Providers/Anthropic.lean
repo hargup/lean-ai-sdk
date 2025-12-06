@@ -7,6 +7,7 @@ import AiSdk.Types
 import AiSdk.Json
 import AiSdk.Provider
 import AiSdk.Config
+import AiSdk.Stream
 import HttpClient
 
 namespace AiSdk.Anthropic
@@ -114,9 +115,29 @@ def buildRequestJson (modelId : String) (messages : List Message)
 
   Json.mkObj pairs
 
+/-- Build the request JSON for Anthropic API with streaming -/
+def buildRequestJsonWithStream (modelId : String) (messages : List Message) (settings : CallSettings) : Json :=
+  let json := buildRequestJson modelId messages settings
+  json.mergeObj (Json.mkObj [("stream", true)])
+
 /-- Construct the RawRequest -/
 def constructRequest (apiKey : String) (modelId : String) (messages : List Message) (settings : CallSettings) : RawRequest :=
   let requestJson := buildRequestJson modelId messages settings
+  let requestBody := requestJson.compress
+  {
+    method := "POST",
+    url := s!"{baseUrl}/v1/messages",
+    headers := [
+      ("x-api-key", apiKey),
+      ("anthropic-version", "2023-06-01"),
+      ("Content-Type", "application/json")
+    ],
+    body := requestBody
+  }
+
+/-- Construct the RawRequest for streaming -/
+def constructStreamRequest (apiKey : String) (modelId : String) (messages : List Message) (settings : CallSettings) : RawRequest :=
+  let requestJson := buildRequestJsonWithStream modelId messages settings
   let requestBody := requestJson.compress
   {
     method := "POST",
@@ -184,6 +205,60 @@ def parseResponse (body : String) : ApiResult GenerateTextResult := do
         toolCalls := toolCalls
       }
 
+/-- Parse stream chunk from Anthropic -/
+def parseStreamChunk (chunkJson : Json) : Option StreamChunk :=
+  match getFieldStr chunkJson "type" with
+  | some "content_block_delta" =>
+    let delta := getField chunkJson "delta" |>.getD (Json.mkObj [])
+    match getFieldStr delta "type" with
+    | some "text_delta" =>
+      let text := getFieldStr delta "text" |>.getD ""
+      some (.textDelta text)
+    | some "input_json_delta" =>
+       -- Partial JSON for tool calls - accumulation happens in the shell or specialized handler
+       -- For now just return raw text of arguments to be appended?
+       -- Or we need a dedicated delta type for tool call partials?
+       -- Types.lean defines: toolCallDelta (id : String) (argsText : String)
+       -- Anthropic separates tool_use_id in 'content_block_start' from 'input_json_delta'
+       -- We need stateful parsing to associate deltas with IDs, OR we just emit delta args
+       -- and let the consumer stitch it if they track the active tool.
+       -- But `toolCallDelta` requires ID.
+       -- For stateless chunk parsing, we might miss the ID if it was in a previous chunk.
+       -- A common pattern: if ID is empty string, it appends to current tool call.
+       let partialJson := getFieldStr delta "partial_json" |>.getD ""
+       some (.toolCallDelta "" partialJson) 
+    | _ => none
+  | some "content_block_start" =>
+     let contentBlock := getField chunkJson "content_block" |>.getD (Json.mkObj [])
+     match getFieldStr contentBlock "type" with
+     | some "tool_use" =>
+       let id := getFieldStr contentBlock "id" |>.getD ""
+       let name := getFieldStr contentBlock "name" |>.getD ""
+       -- We can emit a tool call delta with ID and Name (encoded in argsText or similar hack?)
+       -- Or we update StreamChunk to support 'toolCallStart'?
+       -- For now, let's send ID and empty args to signal start.
+       some (.toolCallDelta id "") 
+     | _ => none
+  | some "message_delta" =>
+    let delta := getField chunkJson "delta" |>.getD (Json.mkObj [])
+    match getFieldStr delta "stop_reason" with
+    | some reason =>
+      -- Usage is in 'usage' field of message_delta
+      let usage := getField chunkJson "usage" |>.getD (Json.mkObj [])
+      let outputTokens := getFieldNat usage "output_tokens" |>.getD 0
+      some (.finish (parseFinishReason reason) { inputTokens := 0, outputTokens := outputTokens })
+    | none => none
+  | some "message_start" =>
+    -- Usage (input tokens) is here
+    let msg := getField chunkJson "message" |>.getD (Json.mkObj [])
+    let usage := getField msg "usage" |>.getD (Json.mkObj [])
+    let inputTokens := getFieldNat usage "input_tokens" |>.getD 0
+    -- We can't send a 'finish' chunk yet.
+    -- Maybe we need a 'usage' chunk? Or just ignore for now until finish?
+    -- Let's ignore input tokens in stream for simplicity or send a dummy finish? No.
+    none
+  | _ => none
+
 end Core
 
 /-- Create the generate function for Anthropic -/
@@ -216,11 +291,31 @@ private def makeGenerateFn (apiKey : String) (modelId : String) : GenerateFn :=
         else
           return .error (.httpError response.status.code response.body)
 
+/-- Create the stream function for Anthropic -/
+private def makeStreamFn (apiKey : String) (modelId : String) : StreamFn :=
+  fun messages settings => do
+    let request := Core.constructStreamRequest apiKey modelId messages settings
+    
+    -- Execute request using curl stream helper
+    let lineStream ← AiSdk.Stream.streamRequest request
+    
+    -- Map lines to StreamChunks
+    let chunkStream := lineStream.filterMap fun line => do
+      match AiSdk.Stream.parseSseLine line with
+      | some data =>
+        match Json.parse data with
+        | .ok json => return Core.parseStreamChunk json
+        | .error e => return some (.error s!"JSON parse error: {e} in line: {data}")
+      | none => return none
+      
+    return .ok chunkStream
+
 /-- Create an Anthropic model -/
 def createModel (apiKey : String) (modelId : String := defaultModel) : Model :=
   { provider := .anthropic
     modelId := modelId
-    generateFn := makeGenerateFn apiKey modelId }
+    generateFn := makeGenerateFn apiKey modelId
+    streamFn := some (makeStreamFn apiKey modelId) }
 
 /-- Create an Anthropic model, loading API key from config -/
 def create (modelId : String := defaultModel)

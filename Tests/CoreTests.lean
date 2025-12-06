@@ -75,4 +75,35 @@ def main : IO Unit := do
   | some (.textDelta t) => assertEq t "World" "Ollama text delta parsed"
   | _ => throw <| IO.userError "Failed to parse Ollama text delta"
 
+  -- Test 6: Anthropic Streaming Parse (Text Delta)
+  let anthropicJson := Json.mkObj [
+    ("type", "content_block_delta"),
+    ("index", 0),
+    ("delta", Json.mkObj [
+      ("type", "text_delta"),
+      ("text", "Claude")
+    ])
+  ]
+  let chunk3 := AiSdk.Anthropic.Core.parseStreamChunk anthropicJson
+  match chunk3 with
+  | some (.textDelta t) => assertEq t "Claude" "Anthropic text delta parsed"
+  | _ => throw <| IO.userError "Failed to parse Anthropic text delta"
+
+  -- Test 7: Google Streaming Parse (Text Delta)
+  let googleJson := Json.mkObj [
+    ("candidates", Json.arr #[
+      Json.mkObj [
+        ("content", Json.mkObj [
+          ("parts", Json.arr #[
+            Json.mkObj [("text", "Gemini")]
+          ])
+        ])
+      ]
+    ])
+  ]
+  let chunk4 := AiSdk.Google.Core.parseStreamChunk googleJson
+  match chunk4 with
+  | some (.textDelta t) => assertEq t "Gemini" "Google text delta parsed"
+  | _ => throw <| IO.userError "Failed to parse Google text delta"
+
   IO.println "All tests passed!"

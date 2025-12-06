@@ -7,6 +7,7 @@ import AiSdk.Types
 import AiSdk.Json
 import AiSdk.Provider
 import AiSdk.Config
+import AiSdk.Stream
 import HttpClient
 
 namespace AiSdk.Google
@@ -139,6 +140,19 @@ def constructRequest (apiKey : String) (modelId : String) (messages : List Messa
     body := requestBody
   }
 
+/-- Construct the RawRequest for streaming -/
+def constructStreamRequest (apiKey : String) (modelId : String) (messages : List Message) (settings : CallSettings) : RawRequest :=
+  let requestJson := buildRequestJson messages settings
+  let requestBody := requestJson.compress
+  -- Use streamGenerateContent?alt=sse
+  let url := s!"{baseUrl}/models/{modelId}:streamGenerateContent?alt=sse&key={apiKey}"
+  {
+    method := "POST",
+    url := url,
+    headers := [("Content-Type", "application/json")],
+    body := requestBody
+  }
+
 /-- Parse finish reason from Google response -/
 def parseFinishReason (reason : String) : FinishReason :=
   match reason with
@@ -201,6 +215,48 @@ def parseResponse (body : String) : ApiResult GenerateTextResult := do
           toolCalls := toolCalls
         }
 
+/-- Parse stream chunk from Google -/
+def parseStreamChunk (chunkJson : Json) : Option StreamChunk :=
+  -- Google stream format is array of candidates similar to unary response
+  let candidates := getFieldArr chunkJson "candidates" |>.getD #[]
+  if candidates.isEmpty then
+     -- Check for usage metadata only chunk?
+     match getField chunkJson "usageMetadata" with
+     | some usage =>
+       let inputTokens := getFieldNat usage "promptTokenCount" |>.getD 0
+       let outputTokens := getFieldNat usage "candidatesTokenCount" |>.getD 0
+       some (.finish .stop { inputTokens, outputTokens })
+     | none => none
+  else
+    let candidate := candidates[0]!
+    
+    -- Check for content text
+    let parts := getPathArr candidate ["content", "parts"] |>.getD #[]
+    let text := parts.toList.filterMap (fun p => getFieldStr p "text") |> String.intercalate ""
+    
+    if text != "" then
+      some (.textDelta text)
+    else
+      -- Check for tool calls (functionCall)
+      let toolCalls := parts.toList.filterMap fun part => do
+          let funcCall ← getField part "functionCall"
+          let name ← getFieldStr funcCall "name"
+          let args ← getField funcCall "args"
+          some (name, args.compress)
+      
+      if !toolCalls.isEmpty then
+        let (name, args) := toolCalls.head!
+        some (.toolCallDelta name args)
+      else
+        -- Check finish reason
+        match getFieldStr candidate "finishReason" with
+        | some reason =>
+          if reason != "STOP" then 
+             let finishReason := parseFinishReason reason
+             some (.finish finishReason { inputTokens := 0, outputTokens := 0 })
+          else none
+        | none => none
+
 end Core
 
 /-- Create the generate function for Google -/
@@ -233,11 +289,31 @@ private def makeGenerateFn (apiKey : String) (modelId : String) : GenerateFn :=
         else
           return .error (.httpError response.status.code response.body)
 
+/-- Create the stream function for Google -/
+private def makeStreamFn (apiKey : String) (modelId : String) : StreamFn :=
+  fun messages settings => do
+    let request := Core.constructStreamRequest apiKey modelId messages settings
+    
+    -- Execute request using curl stream helper
+    let lineStream ← AiSdk.Stream.streamRequest request
+    
+    -- Map lines to StreamChunks
+    let chunkStream := lineStream.filterMap fun line => do
+      match AiSdk.Stream.parseSseLine line with
+      | some data =>
+        match Json.parse data with
+        | .ok json => return Core.parseStreamChunk json
+        | .error e => return some (.error s!"JSON parse error: {e} in line: {data}")
+      | none => return none
+      
+    return .ok chunkStream
+
 /-- Create a Google model -/
 def createModel (apiKey : String) (modelId : String := defaultModel) : Model :=
   { provider := .google
     modelId := modelId
-    generateFn := makeGenerateFn apiKey modelId }
+    generateFn := makeGenerateFn apiKey modelId
+    streamFn := some (makeStreamFn apiKey modelId) }
 
 /-- Create a Google model, loading API key from config -/
 def create (modelId : String := defaultModel)
