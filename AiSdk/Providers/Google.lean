@@ -178,7 +178,7 @@ private def makeGenerateFn (apiKey : String) (modelId : String) : GenerateFn :=
 
 /-- Create a Google model -/
 def createModel (apiKey : String) (modelId : String := defaultModel) : Model :=
-  { provider := "google"
+  { provider := .google
     modelId := modelId
     generateFn := makeGenerateFn apiKey modelId }
 

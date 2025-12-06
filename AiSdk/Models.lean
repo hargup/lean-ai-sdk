@@ -3,13 +3,15 @@
   Supported model definitions and metadata
 -/
 
+import AiSdk.Types
+
 namespace AiSdk.Models
 
 /-- Model metadata -/
 structure ModelInfo where
   id : String
   name : String
-  provider : String
+  provider : Provider
   description : String
   contextWindow : Nat
   isDefault : Bool := false
@@ -20,7 +22,7 @@ namespace Google
   def gemini25Flash : ModelInfo := {
     id := "gemini-2.5-flash"
     name := "Gemini 2.5 Flash"
-    provider := "google"
+    provider := .google
     description := "Best price-performance for large-scale processing and agentic workflows"
     contextWindow := 1048576
     isDefault := true
@@ -30,7 +32,7 @@ namespace Google
   def gemini25FlashLite : ModelInfo := {
     id := "gemini-2.5-flash-lite"
     name := "Gemini 2.5 Flash-Lite"
-    provider := "google"
+    provider := .google
     description := "Fastest flash model optimized for cost-efficiency and high throughput"
     contextWindow := 1048576
   }
@@ -39,7 +41,7 @@ namespace Google
   def gemini25Pro : ModelInfo := {
     id := "gemini-2.5-pro"
     name := "Gemini 2.5 Pro"
-    provider := "google"
+    provider := .google
     description := "Advanced thinking model for complex reasoning over code, math, STEM"
     contextWindow := 1048576
   }
@@ -48,7 +50,7 @@ namespace Google
   def gemini20Flash : ModelInfo := {
     id := "gemini-2.0-flash"
     name := "Gemini 2.0 Flash"
-    provider := "google"
+    provider := .google
     description := "Second generation workhorse with 1M token context window"
     contextWindow := 1048576
   }
@@ -57,7 +59,7 @@ namespace Google
   def gemini20FlashLite : ModelInfo := {
     id := "gemini-2.0-flash-lite"
     name := "Gemini 2.0 Flash-Lite"
-    provider := "google"
+    provider := .google
     description := "Second generation small model optimized for cost efficiency"
     contextWindow := 1048576
   }
@@ -66,7 +68,7 @@ namespace Google
   def gemini25FlashImage : ModelInfo := {
     id := "gemini-2.5-flash-image"
     name := "Gemini 2.5 Flash Image"
-    provider := "google"
+    provider := .google
     description := "Image generation and understanding variant"
     contextWindow := 65536
   }
@@ -95,7 +97,7 @@ namespace Anthropic
   def claudeSonnet4 : ModelInfo := {
     id := "claude-sonnet-4-20250514"
     name := "Claude Sonnet 4"
-    provider := "anthropic"
+    provider := .anthropic
     description := "Balanced performance for general purpose tasks"
     contextWindow := 200000
     isDefault := true
@@ -105,7 +107,7 @@ namespace Anthropic
   def claudeOpus4 : ModelInfo := {
     id := "claude-opus-4-20250514"
     name := "Claude Opus 4"
-    provider := "anthropic"
+    provider := .anthropic
     description := "Most capable model for complex reasoning and creative tasks"
     contextWindow := 200000
   }
@@ -114,7 +116,7 @@ namespace Anthropic
   def claudeHaiku3 : ModelInfo := {
     id := "claude-haiku-3-20240307"
     name := "Claude Haiku 3"
-    provider := "anthropic"
+    provider := .anthropic
     description := "Fastest model for quick responses and simple tasks"
     contextWindow := 200000
   }
@@ -132,7 +134,7 @@ namespace OpenAI
   def gpt4o : ModelInfo := {
     id := "gpt-4o"
     name := "GPT-4o"
-    provider := "openai"
+    provider := .openai
     description := "Optimized GPT-4 variant for chat and multimodal tasks"
     contextWindow := 128000
     isDefault := true
@@ -142,7 +144,7 @@ namespace OpenAI
   def gpt4oMini : ModelInfo := {
     id := "gpt-4o-mini"
     name := "GPT-4o Mini"
-    provider := "openai"
+    provider := .openai
     description := "Smaller, faster, more affordable GPT-4o variant"
     contextWindow := 128000
   }
@@ -151,7 +153,7 @@ namespace OpenAI
   def gpt4Turbo : ModelInfo := {
     id := "gpt-4-turbo"
     name := "GPT-4 Turbo"
-    provider := "openai"
+    provider := .openai
     description := "High-capability model with vision support"
     contextWindow := 128000
   }
@@ -160,7 +162,7 @@ namespace OpenAI
   def o1 : ModelInfo := {
     id := "o1"
     name := "o1"
-    provider := "openai"
+    provider := .openai
     description := "Advanced reasoning model for complex tasks"
     contextWindow := 200000
   }
@@ -169,7 +171,7 @@ namespace OpenAI
   def o1Mini : ModelInfo := {
     id := "o1-mini"
     name := "o1 Mini"
-    provider := "openai"
+    provider := .openai
     description := "Fast reasoning model optimized for speed"
     contextWindow := 128000
   }
@@ -178,7 +180,7 @@ namespace OpenAI
   def o3Mini : ModelInfo := {
     id := "o3-mini"
     name := "o3 Mini"
-    provider := "openai"
+    provider := .openai
     description := "Latest generation mini reasoning model"
     contextWindow := 200000
   }
@@ -199,7 +201,7 @@ namespace Xai
   def grok3 : ModelInfo := {
     id := "grok-3"
     name := "Grok 3"
-    provider := "xai"
+    provider := .xai
     description := "Balanced model for general purpose tasks"
     contextWindow := 131072
     isDefault := true
@@ -209,7 +211,7 @@ namespace Xai
   def grok3Fast : ModelInfo := {
     id := "grok-3-fast"
     name := "Grok 3 Fast"
-    provider := "xai"
+    provider := .xai
     description := "Fast variant optimized for speed"
     contextWindow := 131072
   }
@@ -218,7 +220,7 @@ namespace Xai
   def grok3Mini : ModelInfo := {
     id := "grok-3-mini"
     name := "Grok 3 Mini"
-    provider := "xai"
+    provider := .xai
     description := "Smaller, faster model for simpler tasks"
     contextWindow := 131072
   }
@@ -227,7 +229,7 @@ namespace Xai
   def grok3MiniFast : ModelInfo := {
     id := "grok-3-mini-fast"
     name := "Grok 3 Mini Fast"
-    provider := "xai"
+    provider := .xai
     description := "Fastest Grok model variant"
     contextWindow := 131072
   }
@@ -236,7 +238,7 @@ namespace Xai
   def grok2 : ModelInfo := {
     id := "grok-2"
     name := "Grok 2"
-    provider := "xai"
+    provider := .xai
     description := "Previous generation Grok model"
     contextWindow := 131072
   }

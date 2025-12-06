@@ -155,7 +155,7 @@ private def makeGenerateFn (apiKey : String) (modelId : String) : GenerateFn :=
 
 /-- Create an OpenAI model -/
 def createModel (apiKey : String) (modelId : String := defaultModel) : Model :=
-  { provider := "openai"
+  { provider := .openai
     modelId := modelId
     generateFn := makeGenerateFn apiKey modelId }
 

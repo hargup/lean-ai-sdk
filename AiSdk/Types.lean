@@ -5,6 +5,33 @@
 
 namespace AiSdk
 
+/-- Supported AI Providers -/
+inductive Provider where
+  | openai
+  | anthropic
+  | google
+  | xai
+  deriving Repr, BEq, Inhabited
+
+namespace Provider
+  def toString : Provider → String
+    | openai => "openai"
+    | anthropic => "anthropic"
+    | google => "google"
+    | xai => "xai"
+
+  def fromString (s : String) : Option Provider :=
+    match s.toLower with
+    | "openai" => some openai
+    | "anthropic" => some anthropic
+    | "google" => some google
+    | "xai" => some xai
+    | _ => none
+
+  instance : ToString Provider where
+    toString := Provider.toString
+end Provider
+
 /-- Message roles in a conversation -/
 inductive Role where
   | system

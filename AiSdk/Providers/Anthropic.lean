@@ -167,7 +167,7 @@ private def makeGenerateFn (apiKey : String) (modelId : String) : GenerateFn :=
 
 /-- Create an Anthropic model -/
 def createModel (apiKey : String) (modelId : String := defaultModel) : Model :=
-  { provider := "anthropic"
+  { provider := .anthropic
     modelId := modelId
     generateFn := makeGenerateFn apiKey modelId }
 

@@ -13,7 +13,7 @@ def GenerateFn := List Message → CallSettings → IO (ApiResult GenerateTextRe
 /-- A model that can generate text -/
 structure Model where
   /-- Provider name (e.g., "anthropic", "google") -/
-  provider : String
+  provider : Provider
   /-- Model identifier (e.g., "claude-sonnet-4-20250514", "gemini-2.0-flash") -/
   modelId : String
   /-- The function to call for generation -/

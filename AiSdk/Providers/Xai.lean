@@ -156,7 +156,7 @@ private def makeGenerateFn (apiKey : String) (modelId : String) : GenerateFn :=
 
 /-- Create an xAI model -/
 def createModel (apiKey : String) (modelId : String := defaultModel) : Model :=
-  { provider := "xai"
+  { provider := .xai
     modelId := modelId
     generateFn := makeGenerateFn apiKey modelId }
 
