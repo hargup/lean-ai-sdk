@@ -3,6 +3,8 @@
   Core types for the AI SDK
 -/
 
+import Lean.Data.Json
+
 namespace AiSdk
 
 /-- Supported AI Providers -/
@@ -11,6 +13,7 @@ inductive Provider where
   | anthropic
   | google
   | xai
+  | ollama
   deriving Repr, BEq, Inhabited
 
 namespace Provider
@@ -19,6 +22,7 @@ namespace Provider
     | anthropic => "anthropic"
     | google => "google"
     | xai => "xai"
+    | ollama => "ollama"
 
   def fromString (s : String) : Option Provider :=
     match s.toLower with
@@ -26,6 +30,7 @@ namespace Provider
     | "anthropic" => some anthropic
     | "google" => some google
     | "xai" => some xai
+    | "ollama" => some ollama
     | _ => none
 
   instance : ToString Provider where
@@ -55,6 +60,8 @@ namespace Role
   instance : ToString Role where
     toString := Role.toString
 end Role
+
+open Lean (Json)
 
 /-- A part of a message content -/
 inductive ContentPart where
@@ -94,6 +101,20 @@ namespace Message
     ) ""
 end Message
 
+/-- Definition of a tool that can be called by the model -/
+structure ToolDefinition where
+  name : String
+  description : String
+  parameters : Json -- JSON Schema
+  deriving Repr, Inhabited
+
+/-- A request from the model to call a tool -/
+structure ToolCall where
+  id : String
+  name : String
+  arguments : Json -- Parsed arguments
+  deriving Repr, Inhabited
+
 /-- Settings for text generation -/
 structure CallSettings where
   /-- Sampling temperature (0.0 to 1.0+) -/
@@ -106,6 +127,8 @@ structure CallSettings where
   topK : Option Nat := none
   /-- Sequences that stop generation -/
   stopSequences : List String := []
+  /-- Tools available to the model -/
+  tools : List ToolDefinition := []
   deriving Repr, Inhabited
 
 /-- Token usage statistics -/
@@ -149,6 +172,8 @@ structure GenerateTextResult where
   finishReason : FinishReason
   /-- Token usage statistics -/
   usage : Usage
+  /-- Tool calls made by the model -/
+  toolCalls : List ToolCall := []
   deriving Repr, Inhabited
 
 /-- API errors that can occur -/

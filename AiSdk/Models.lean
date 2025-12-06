@@ -253,9 +253,36 @@ namespace Xai
   ]
 end Xai
 
+namespace Ollama
+  /-- Llama 3 - Standard Llama 3 model -/
+  def llama3 : ModelInfo := {
+    id := "llama3"
+    name := "Llama 3"
+    provider := .ollama
+    description := "Meta's Llama 3 model (via Ollama)"
+    contextWindow := 8192
+    isDefault := true
+  }
+
+  /-- Mistral - Mistral 7B -/
+  def mistral : ModelInfo := {
+    id := "mistral"
+    name := "Mistral 7B"
+    provider := .ollama
+    description := "Mistral 7B model (via Ollama)"
+    contextWindow := 32768
+  }
+
+  /-- All Ollama models (common ones) -/
+  def all : List ModelInfo := [
+    llama3,
+    mistral
+  ]
+end Ollama
+
 /-- All supported models -/
 def allModels : List ModelInfo :=
-  Google.allStable ++ Anthropic.all ++ OpenAI.all ++ Xai.all
+  Google.allStable ++ Anthropic.all ++ OpenAI.all ++ Xai.all ++ Ollama.all
 
 /-- Get model info by ID -/
 def getModelInfo (id : String) : Option ModelInfo :=
@@ -268,6 +295,7 @@ def getDefaultModel (provider : String) : Option ModelInfo :=
   | "anthropic" | "claude" => some Anthropic.claudeSonnet4
   | "openai" | "gpt" => some OpenAI.gpt4o
   | "xai" | "grok" => some Xai.grok3
+  | "ollama" => some Ollama.llama3
   | _ => none
 
 /-- List all models for a provider -/
@@ -277,6 +305,7 @@ def listModels (provider : String) : List ModelInfo :=
   | "anthropic" | "claude" => Anthropic.all
   | "openai" | "gpt" => OpenAI.all
   | "xai" | "grok" => Xai.all
+  | "ollama" => Ollama.all
   | _ => []
 
 end AiSdk.Models

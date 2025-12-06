@@ -42,6 +42,17 @@ def contentPartToJson (part : ContentPart) : Json :=
       ("image_url", Json.mkObj [("url", s!"data:{mime};base64,{d}")])
     ]
 
+/-- Convert ToolDefinition to OpenAI/xAI JSON format -/
+def toolToJson (tool : ToolDefinition) : Json :=
+  Json.mkObj [
+    ("type", "function"),
+    ("function", Json.mkObj [
+      ("name", tool.name),
+      ("description", tool.description),
+      ("parameters", tool.parameters)
+    ])
+  ]
+
 /-- Build the request JSON for xAI API (OpenAI-compatible format) -/
 def buildRequestJson (modelId : String) (messages : List Message) (settings : CallSettings) : Json :=
   -- Build messages array
@@ -64,6 +75,10 @@ def buildRequestJson (modelId : String) (messages : List Message) (settings : Ca
     ("model", Json.str modelId),
     ("messages", Json.arr messagesJson.toArray)
   ]
+
+  -- Add tools if present
+  let pairs := if settings.tools.isEmpty then pairs
+    else pairs ++ [("tools", Json.arr (settings.tools.map toolToJson).toArray)]
 
   -- Add optional settings
   let pairs := match settings.temperature with
@@ -103,6 +118,19 @@ def parseFinishReason (reason : String) : FinishReason :=
   | "content_filter" => .contentFilter
   | _ => .other
 
+/-- Parse tool calls from xAI/OpenAI response -/
+def parseToolCalls (choice : Json) : List ToolCall :=
+  match getPathArr choice ["message", "tool_calls"] with
+  | some calls => calls.toList.filterMap fun call => do
+    let id ← getFieldStr call "id"
+    let func ← getField call "function"
+    let name ← getFieldStr func "name"
+    let argsStr ← getFieldStr func "arguments"
+    match Json.parse argsStr with
+    | .ok args => some { id := id, name := name, arguments := args }
+    | .error _ => none
+  | none => []
+
 /-- Parse the xAI API response (OpenAI-compatible format) -/
 def parseResponse (body : String) : ApiResult GenerateTextResult := do
   match parse body with
@@ -128,6 +156,9 @@ def parseResponse (body : String) : ApiResult GenerateTextResult := do
         let finishReasonStr := getFieldStr choice "finish_reason" |>.getD "stop"
         let finishReason := parseFinishReason finishReasonStr
 
+        -- Extract tool calls
+        let toolCalls := parseToolCalls choice
+
         -- Extract usage
         let usage := getField json "usage"
         let inputTokens := usage.bind (fun u => getFieldNat u "prompt_tokens") |>.getD 0
@@ -137,6 +168,7 @@ def parseResponse (body : String) : ApiResult GenerateTextResult := do
           text := text
           finishReason := finishReason
           usage := { inputTokens := inputTokens, outputTokens := outputTokens }
+          toolCalls := toolCalls
         }
 
 end Core

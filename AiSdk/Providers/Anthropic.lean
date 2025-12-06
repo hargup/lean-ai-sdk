@@ -44,6 +44,14 @@ def contentPartToJson (part : ContentPart) : Json :=
       ])
     ]
 
+/-- Convert ToolDefinition to Anthropic JSON format -/
+def toolToJson (tool : ToolDefinition) : Json :=
+  Json.mkObj [
+    ("name", tool.name),
+    ("description", tool.description),
+    ("input_schema", tool.parameters)
+  ]
+
 /-- Build the request JSON for Anthropic API -/
 def buildRequestJson (modelId : String) (messages : List Message)
     (settings : CallSettings) : Json :=
@@ -74,6 +82,10 @@ def buildRequestJson (modelId : String) (messages : List Message)
     ("max_tokens", Json.num (settings.maxTokens.getD 4096)),
     ("messages", Json.arr messagesJson.toArray)
   ]
+
+  -- Add tools if present
+  let pairs := if settings.tools.isEmpty then pairs
+    else pairs ++ [("tools", Json.arr (settings.tools.map toolToJson).toArray)]
 
   -- Add optional system prompt
   let pairs := if systemContent.isEmpty then pairs
@@ -124,6 +136,17 @@ def parseFinishReason (reason : String) : FinishReason :=
   | "tool_use" => .toolUse
   | _ => .other
 
+/-- Parse tool calls from Anthropic response -/
+def parseToolCalls (content : Array Json) : List ToolCall :=
+  content.toList.filterMap fun item => do
+    match getFieldStr item "type" with
+    | some "tool_use" =>
+      let id ← getFieldStr item "id"
+      let name ← getFieldStr item "name"
+      let input ← getField item "input"
+      some { id := id, name := name, arguments := input }
+    | _ => none
+
 /-- Parse the Anthropic API response -/
 def parseResponse (body : String) : ApiResult GenerateTextResult := do
   match parse body with
@@ -137,12 +160,16 @@ def parseResponse (body : String) : ApiResult GenerateTextResult := do
     | _ =>
       -- Extract content text
       let contentArr := getFieldArr json "content" |>.getD #[]
-      let text := contentArr.toList.filterMap (fun c => getFieldStr c "text")
-        |> String.intercalate ""
+      let text := contentArr.toList.filterMap (fun c => 
+        if getFieldStr c "type" == some "text" then getFieldStr c "text" else none
+      ) |> String.intercalate ""
 
       -- Extract finish reason
       let stopReason := getFieldStr json "stop_reason" |>.getD "end_turn"
       let finishReason := parseFinishReason stopReason
+
+      -- Extract tool calls
+      let toolCalls := parseToolCalls contentArr
 
       -- Extract usage
       let inputTokens := getPathNat json ["usage", "input_tokens"] |>.getD 0
@@ -152,6 +179,7 @@ def parseResponse (body : String) : ApiResult GenerateTextResult := do
         text := text
         finishReason := finishReason
         usage := { inputTokens := inputTokens, outputTokens := outputTokens }
+        toolCalls := toolCalls
       }
 
 end Core

@@ -61,6 +61,12 @@ def getFieldNat (j : Json) (key : String) : Option Nat :=
 def getFieldArr (j : Json) (key : String) : Option (Array Json) :=
   getPathArr j [key]
 
+/-- Get a boolean field -/
+def getFieldBool (j : Json) (key : String) : Option Bool :=
+  match getField j key with
+  | some (Json.bool b) => some b
+  | _ => none
+
 /-- Parse JSON string -/
 def parse (s : String) : Except String Json :=
   Lean.Json.parse s

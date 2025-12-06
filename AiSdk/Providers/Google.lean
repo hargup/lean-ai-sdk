@@ -42,6 +42,14 @@ def contentPartToJson (part : ContentPart) : Json :=
       ])
     ]
 
+/-- Convert ToolDefinition to Google JSON format -/
+def toolToJson (tool : ToolDefinition) : Json :=
+  Json.mkObj [
+    ("name", tool.name),
+    ("description", tool.description),
+    ("parameters", tool.parameters) -- Google uses standard JSON schema, same as OpenAI roughly
+  ]
+
 /-- Build the request JSON for Google API -/
 def buildRequestJson (messages : List Message) (settings : CallSettings) : Json :=
   -- Separate system message from other messages
@@ -57,6 +65,10 @@ def buildRequestJson (messages : List Message) (settings : CallSettings) : Json 
       ("role", Json.str (roleToString msg.role)),
       ("parts", Json.arr partsJson.toArray)
     ]
+  
+  -- Build tools config
+  let toolsJson := if settings.tools.isEmpty then Json.null
+    else Json.arr #[Json.mkObj [("functionDeclarations", Json.arr (settings.tools.map toolToJson).toArray)]]
 
   -- Build generation config
   let genConfigPairs : List (String × Json) := []
@@ -84,6 +96,10 @@ def buildRequestJson (messages : List Message) (settings : CallSettings) : Json 
   let pairs : List (String × Json) := [
     ("contents", Json.arr contentsJson.toArray)
   ]
+
+  -- Add tools if present
+  let pairs := if toolsJson.isNull then pairs
+    else pairs ++ [("tools", toolsJson)]
 
   -- Add system instruction if present
   let pairs := if systemContent.isEmpty then pairs
@@ -118,6 +134,17 @@ def parseFinishReason (reason : String) : FinishReason :=
   | "RECITATION" => .contentFilter
   | _ => .other
 
+/-- Parse tool calls from Google response -/
+def parseToolCalls (candidate : Json) : List ToolCall :=
+  let parts := getPathArr candidate ["content", "parts"] |>.getD #[]
+  parts.toList.filterMap fun part => do
+    let funcCall ← getField part "functionCall"
+    let name ← getFieldStr funcCall "name"
+    let args ← getField funcCall "args"
+    -- Google doesn't provide ID in the same way, we might generate one or leave empty?
+    -- Using name as ID for now or empty string since the protocol is stateful
+    some { id := "", name := name, arguments := args }
+
 /-- Parse the Google API response -/
 def parseResponse (body : String) : ApiResult GenerateTextResult := do
   match parse body with
@@ -145,6 +172,9 @@ def parseResponse (body : String) : ApiResult GenerateTextResult := do
         let finishReasonStr := getFieldStr candidate "finishReason" |>.getD "STOP"
         let finishReason := parseFinishReason finishReasonStr
 
+        -- Extract tool calls
+        let toolCalls := parseToolCalls candidate
+
         -- Extract usage (may be in different locations)
         let usageMetadata := getField json "usageMetadata"
         let inputTokens := usageMetadata.bind (fun u => getFieldNat u "promptTokenCount") |>.getD 0
@@ -154,6 +184,7 @@ def parseResponse (body : String) : ApiResult GenerateTextResult := do
           text := text
           finishReason := finishReason
           usage := { inputTokens := inputTokens, outputTokens := outputTokens }
+          toolCalls := toolCalls
         }
 
 end Core
