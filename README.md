@@ -1,35 +1,41 @@
 # Lean4 AI SDK
 
-A minimal AI SDK for Lean4, supporting Anthropic Claude and Google Gemini models. Inspired by Vercel's AI SDK.
+A minimal AI SDK for Lean4, supporting **OpenAI**, **Anthropic Claude**, **Google Gemini**, **xAI** (Grok), and **Ollama** models. Designed with the "Functional Core, Imperative Shell" pattern. Inspired by Vercel's AI SDK.
 
 ## Features
 
-- ✅ Support for Anthropic Claude models
-- ✅ Support for Google Gemini models
-- ✅ Simple, type-safe API
-- ✅ Configuration file support (~/.ai-sdk.config)
-- ✅ Environment variable fallback
+- ✅ **Universal Provider Support**: OpenAI, Anthropic, Google, xAI, Ollama
+- ✅ **Streaming**: Real-time response streaming (`streamText`)
+- ✅ **Structured Outputs**: Type-safe JSON generation (`generateObject`)
+- ✅ **Multimodal**: Support for images in messages
+- ✅ **Tool Use**: Function calling support (Providers & Agents)
+- ✅ **Simple API**: Type-safe, functional, and composable
+- ✅ **Configuration**: `.ai-sdk.config` file or environment variables
 
 ## Installation
 
-This SDK requires [Lean 4.25.2](https://leanprover.github.io/) and the [http-client](https://github.com/hargup/lean-http-client) library.
+Add this to your `lakefile.lean`:
+
+```lean
+require "ai-sdk" from git "https://github.com/hargup/lean-ai-sdk"
+```
+
+Then run:
 
 ```bash
-cd ai-sdk
 lake update
-lake build
 ```
 
 ## Usage
 
-### As a Library
+### Basic Text Generation
 
 ```lean
 import AiSdk
 
 def main : IO Unit := do
   -- Create a Google Gemini model
-  match ← AiSdk.google with
+  match ← AiSdk.google "gemini-2.0-flash" with
   | .error e => IO.eprintln s!"Error: {e}"
   | .ok model =>
     -- Generate text
@@ -40,33 +46,88 @@ def main : IO Unit := do
       IO.println s!"Tokens: {result.usage.inputTokens}→{result.usage.outputTokens}"
 ```
 
-### With Custom Settings
+### Streaming Responses
 
 ```lean
 import AiSdk
 
 def main : IO Unit := do
-  match ← AiSdk.anthropic "claude-opus-4-20250514" with
-  | .error e => IO.eprintln s!"Error: {e}"
+  match ← AiSdk.openai "gpt-4o" with
   | .ok model =>
-    let settings : CallSettings := {
-      temperature := some 0.7
-      maxTokens := some 1000
-      topP := some 0.9
-    }
-    match ← AiSdk.generateText model "Write a haiku" settings with
+    match ← AiSdk.streamText model "Tell me a story" with
+    | .ok stream =>
+      let mut fullText := ""
+      let chunkStream := stream.filterMap fun chunk => do
+        match chunk with
+        | .textDelta text => 
+          IO.print text -- Print chunk as it arrives
+          return some text
+        | _ => return none
+      
+      -- Consume the stream
+      for chunk in chunkStream do
+        fullText := fullText ++ chunk
+        
+      IO.println "\n--- Done ---"
     | .error e => IO.eprintln s!"Error: {e}"
-    | .ok result => IO.println result.text
+  | .error e => IO.eprintln s!"Error: {e}"
 ```
 
-### With System Prompts
+### Local LLMs with Ollama
 
 ```lean
-match ← AiSdk.generateTextWithSystem model
-  "You are a helpful assistant that speaks like a pirate."
-  "What is the capital of France?" with
-| .error e => IO.eprintln s!"Error: {e}"
-| .ok result => IO.println result.text
+import AiSdk
+
+def main : IO Unit := do
+  -- Uses http://localhost:11434 by default
+  match ← AiSdk.ollama "llama3" with 
+  | .ok model =>
+    match ← AiSdk.generateText model "Explain quantum physics simply" with
+    | .ok result => IO.println result.text
+    | .error e => IO.eprintln s!"Error: {e}"
+  | .error e => IO.eprintln s!"Error: {e}"
+```
+
+### Multimodal (Images)
+
+```lean
+import AiSdk
+
+def main : IO Unit := do
+  let imageBase64 := "..." -- Load your base64 image
+  let message := Message.userParts [
+    .text "What is in this image?",
+    .image imageBase64 "image/png"
+  ]
+  
+  match ← AiSdk.anthropic "claude-3-opus-20240229" with
+  | .ok model =>
+    match ← AiSdk.generateTextFromMessages model [message] with
+    | .ok result => IO.println result.text
+    | .error e => IO.eprintln s!"Error: {e}"
+  | _ => pure ()
+```
+
+### Structured Outputs (JSON)
+
+```lean
+import AiSdk
+
+def main : IO Unit := do
+  let schema := Json.mkObj [
+    ("type", "object"),
+    ("properties", Json.mkObj [
+      ("setup", Json.mkObj [("type", "string")]),
+      ("punchline", Json.mkObj [("type", "string")])
+    ])
+  ]
+  
+  match ← AiSdk.openai "gpt-4-turbo" with
+  | .ok model =>
+    match ← AiSdk.generateObject model "Tell me a joke" schema with
+    | .ok json => IO.println json.compress
+    | .error e => IO.eprintln s!"Error: {e}"
+  | _ => pure ()
 ```
 
 ## Configuration
@@ -79,9 +140,13 @@ API keys can be provided in three ways (in order of precedence):
    ```
 
 2. **Config file** (`~/.ai-sdk.config`):
-   ```
+   ```bash
    GOOGLE_API_KEY=your-google-key
    ANTHROPIC_API_KEY=your-anthropic-key
+   OPENAI_API_KEY=your-openai-key
+   XAI_API_KEY=your-xai-key
+   # Optional extras
+   ollama_base_url=http://localhost:11434
    ```
 
 3. **Environment variables**:
@@ -90,64 +155,10 @@ API keys can be provided in three ways (in order of precedence):
    export ANTHROPIC_API_KEY=your-anthropic-key
    ```
 
-## API Reference
+## Requirements
 
-### Models
-
-```lean
--- Create Anthropic Claude model
-def anthropic (modelId : String := "claude-sonnet-4-20250514")
-    (apiKey : Option String := none) : IO (ApiResult Model)
-
--- Create Google Gemini model
-def google (modelId : String := "gemini-2.0-flash")
-    (apiKey : Option String := none) : IO (ApiResult Model)
-```
-
-### Text Generation
-
-```lean
--- Generate text from a prompt
-def generateText (model : Model) (prompt : String)
-    (settings : CallSettings := {}) : IO (ApiResult GenerateTextResult)
-
--- Generate text with system prompt
-def generateTextWithSystem (model : Model) (system : String) (prompt : String)
-    (settings : CallSettings := {}) : IO (ApiResult GenerateTextResult)
-
--- Generate from message list
-def generateTextFromMessages (model : Model) (messages : List Message)
-    (settings : CallSettings := {}) : IO (ApiResult GenerateTextResult)
-```
-
-### Types
-
-```lean
-structure CallSettings where
-  temperature : Option Float := none
-  maxTokens : Option Nat := none
-  topP : Option Float := none
-  topK : Option Nat := none
-  stopSequences : List String := []
-
-structure GenerateTextResult where
-  text : String
-  finishReason : FinishReason
-  usage : Usage
-
-structure Usage where
-  inputTokens : Nat
-  outputTokens : Nat
-```
-
-## CLI Application
-
-See [cli-ai](../cli-ai/README.md) for the command-line interface.
-
-## Dependencies
-
-- Lean 4.25.2
-- [hargup/lean-http-client](https://github.com/hargup/lean-http-client)
+- [Lean 4.25.2](https://leanprover.github.io/)
+- [curl](https://curl.se/) (installed on system for HTTP/Streaming)
 
 ## License
 
