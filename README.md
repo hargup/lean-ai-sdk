@@ -12,7 +12,7 @@ A minimal AI SDK for Lean4, supporting Anthropic Claude and Google Gemini models
 
 ## Installation
 
-This SDK requires [Lean 4.25.2](https://leanprover.github.io/) and the [http-client](../http-client) library.
+This SDK requires [Lean 4.25.2](https://leanprover.github.io/) and the [http-client](https://github.com/hargup/lean-http-client) library.
 
 ```bash
 cd ai-sdk
