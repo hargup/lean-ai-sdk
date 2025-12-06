@@ -56,24 +56,42 @@ namespace Role
     toString := Role.toString
 end Role
 
+/-- A part of a message content -/
+inductive ContentPart where
+  | text (text : String)
+  | image (data : String) (mimeType : String) -- Base64 encoded image
+  deriving Repr, BEq, Inhabited
+
 /-- A message in a conversation -/
 structure Message where
   role : Role
-  content : String
+  content : List ContentPart
   deriving Repr, Inhabited
 
 namespace Message
   /-- Create a system message -/
   def system (content : String) : Message :=
-    { role := .system, content := content }
+    { role := .system, content := [.text content] }
 
-  /-- Create a user message -/
+  /-- Create a user message from string -/
   def user (content : String) : Message :=
-    { role := .user, content := content }
+    { role := .user, content := [.text content] }
+
+  /-- Create a user message from parts -/
+  def userParts (parts : List ContentPart) : Message :=
+    { role := .user, content := parts }
 
   /-- Create an assistant message -/
   def assistant (content : String) : Message :=
-    { role := .assistant, content := content }
+    { role := .assistant, content := [.text content] }
+    
+  /-- Helper to get text content from a message (concatenates all text parts) -/
+  def textContent (m : Message) : String :=
+    m.content.foldl (fun acc part =>
+      match part with
+      | .text t => acc ++ t
+      | _ => acc
+    ) ""
 end Message
 
 /-- Settings for text generation -/

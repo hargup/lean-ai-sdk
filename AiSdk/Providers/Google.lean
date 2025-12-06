@@ -31,19 +31,31 @@ def roleToString : Role → String
   | .assistant => "model"
   | .system => "user"  -- System is handled via systemInstruction
 
+/-- Convert ContentPart to Google JSON format -/
+def contentPartToJson (part : ContentPart) : Json :=
+  match part with
+  | .text t => Json.mkObj [("text", Json.str t)]
+  | .image d mime => Json.mkObj [
+      ("inlineData", Json.mkObj [
+        ("mimeType", mime),
+        ("data", d)
+      ])
+    ]
+
 /-- Build the request JSON for Google API -/
 def buildRequestJson (messages : List Message) (settings : CallSettings) : Json :=
   -- Separate system message from other messages
   let systemContent := messages.filter (·.role == .system)
-    |>.map (·.content)
+    |>.map (·.textContent)
     |> String.intercalate "\n\n"
   let chatMessages := messages.filter (·.role != .system)
 
   -- Build contents array
   let contentsJson := chatMessages.map fun msg =>
+    let partsJson := msg.content.map contentPartToJson
     Json.mkObj [
       ("role", Json.str (roleToString msg.role)),
-      ("parts", Json.arr #[Json.mkObj [("text", Json.str msg.content)]])
+      ("parts", Json.arr partsJson.toArray)
     ]
 
   -- Build generation config

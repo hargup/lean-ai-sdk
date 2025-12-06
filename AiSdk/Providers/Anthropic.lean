@@ -31,20 +31,41 @@ def roleToString : Role → String
   | .assistant => "assistant"
   | .system => "user"  -- System is handled separately in Anthropic API
 
+/-- Convert ContentPart to Anthropic JSON format -/
+def contentPartToJson (part : ContentPart) : Json :=
+  match part with
+  | .text t => Json.mkObj [("type", "text"), ("text", t)]
+  | .image d mime => Json.mkObj [
+      ("type", "image"),
+      ("source", Json.mkObj [
+        ("type", "base64"),
+        ("media_type", mime),
+        ("data", d)
+      ])
+    ]
+
 /-- Build the request JSON for Anthropic API -/
 def buildRequestJson (modelId : String) (messages : List Message)
     (settings : CallSettings) : Json :=
   -- Separate system message from other messages
   let systemContent := messages.filter (·.role == .system)
-    |>.map (·.content)
+    |>.map (·.textContent)
     |> String.intercalate "\n\n"
   let chatMessages := messages.filter (·.role != .system)
 
   -- Build messages array
   let messagesJson := chatMessages.map fun msg =>
+    let contentJson := 
+      if msg.content.length == 1 then
+        match msg.content.head! with
+        | .text t => Json.str t
+        | part => Json.arr #[contentPartToJson part]
+      else
+        Json.arr (msg.content.map contentPartToJson).toArray
+
     Json.mkObj [
       ("role", Json.str (roleToString msg.role)),
-      ("content", Json.str msg.content)
+      ("content", contentJson)
     ]
 
   -- Build request object

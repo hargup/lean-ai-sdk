@@ -31,13 +31,30 @@ def roleToString : Role → String
   | .assistant => "assistant"
   | .system => "system"
 
+/-- Convert ContentPart to OpenAI JSON format -/
+def contentPartToJson (part : ContentPart) : Json :=
+  match part with
+  | .text t => Json.mkObj [("type", "text"), ("text", t)]
+  | .image d mime => Json.mkObj [
+      ("type", "image_url"),
+      ("image_url", Json.mkObj [("url", s!"data:{mime};base64,{d}")])
+    ]
+
 /-- Build the request JSON for OpenAI API -/
 def buildRequestJson (modelId : String) (messages : List Message) (settings : CallSettings) : Json :=
   -- Build messages array
   let messagesJson := messages.map fun msg =>
+    let contentJson := 
+      if msg.content.length == 1 then
+        match msg.content.head! with
+        | .text t => Json.str t
+        | part => Json.arr #[contentPartToJson part]
+      else
+        Json.arr (msg.content.map contentPartToJson).toArray
+
     Json.mkObj [
       ("role", Json.str (roleToString msg.role)),
-      ("content", Json.str msg.content)
+      ("content", contentJson)
     ]
 
   -- Start with required fields
