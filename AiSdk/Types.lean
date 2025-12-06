@@ -219,4 +219,42 @@ structure RawRequest where
   body : String
   deriving Repr, Inhabited
 
+/-- A chunk of a streaming response -/
+inductive StreamChunk where
+  | textDelta (text : String)
+  | toolCallDelta (id : String) (argsText : String)
+  | finish (reason : FinishReason) (usage : Usage)
+  | error (msg : String)
+  deriving Repr, Inhabited
+
+/-- A stream of chunks -/
+structure Stream (α : Type) where
+  /-- Function to get the next chunk. Returns none if stream is closed. -/
+  next : IO (Option α)
+
+namespace Stream
+  /-- Map a function over a stream -/
+  def map {α β : Type} (f : α → IO β) (s : Stream α) : Stream β :=
+    { next := do
+        match ← s.next with
+        | some a => 
+          let b ← f a
+          return some b
+        | none => return none
+    }
+
+  /-- Filter and Map a stream -/
+  partial def filterMap {α β : Type} (f : α → IO (Option β)) (s : Stream α) : Stream β :=
+    { next := do
+        let rec loop : IO (Option β) := do
+          match ← s.next with
+          | some a =>
+            match ← f a with
+            | some b => return some b
+            | none => loop
+          | none => return none
+        loop
+    }
+end Stream
+
 end AiSdk

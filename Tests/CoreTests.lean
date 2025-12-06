@@ -7,6 +7,7 @@ import AiSdk.Types
 import AiSdk.Providers.OpenAI
 import AiSdk.Providers.Anthropic
 import AiSdk.Providers.Google
+import AiSdk.Providers.Ollama
 import AiSdk.Json
 
 open AiSdk
@@ -50,5 +51,28 @@ def main : IO Unit := do
   let role3 := AiSdk.Json.getFieldStr msgs3[0]! "role"
   assertEq role3 (some "tool") "OpenAI tool role mapping"
 
-  IO.println "All tests passed!"
+  -- Test 4: OpenAI Streaming Parse (Text Delta)
+  let deltaJson := Json.mkObj [
+    ("choices", Json.arr #[
+      Json.mkObj [("delta", Json.mkObj [("content", "Hello")])]
+    ])
+  ]
+  let chunk := AiSdk.OpenAI.Core.parseStreamChunk deltaJson
+  match chunk with
+  | some (.textDelta t) => assertEq t "Hello" "OpenAI text delta parsed"
+  | _ => throw <| IO.userError "Failed to parse OpenAI text delta"
 
+  -- Test 5: Ollama Streaming Parse (Text Delta)
+  let ollamaJson := Json.mkObj [
+    ("message", Json.mkObj [
+      ("role", "assistant"),
+      ("content", "World")
+    ]),
+    ("done", false)
+  ]
+  let chunk2 := AiSdk.Ollama.Core.parseStreamChunk ollamaJson
+  match chunk2 with
+  | some (.textDelta t) => assertEq t "World" "Ollama text delta parsed"
+  | _ => throw <| IO.userError "Failed to parse Ollama text delta"
+
+  IO.println "All tests passed!"

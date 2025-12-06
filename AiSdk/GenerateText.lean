@@ -23,6 +23,11 @@ def generateTextFromMessages (model : Model) (messages : List Message)
     (settings : CallSettings := {}) : IO (ApiResult GenerateTextResult) :=
   model.generate messages settings
 
+/-- Stream text from a model using a full message list -/
+def streamTextFromMessages (model : Model) (messages : List Message)
+    (settings : CallSettings := {}) : IO (ApiResult (Stream StreamChunk)) :=
+  model.stream messages settings
+
 /-- Helper to run generation and print result -/
 def runAndPrint (model : Model) (prompt : String)
     (settings : CallSettings := {}) : IO Unit := do

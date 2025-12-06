@@ -13,6 +13,7 @@ structure ApiConfig where
   googleApiKey : Option String := none
   openaiApiKey : Option String := none
   xaiApiKey : Option String := none
+  extras : List (String × String) := []
   deriving Repr, Inhabited
 
 namespace ApiConfig
@@ -47,7 +48,7 @@ namespace ApiConfig
           config := { config with googleApiKey := some value }
       | "OPENAI_API_KEY" => config := { config with openaiApiKey := some value }
       | "XAI_API_KEY" => config := { config with xaiApiKey := some value }
-      | _ => pure ()
+      | _ => config := { config with extras := (key, value) :: config.extras }
     return config
 
   /-- Get the path to the config file -/
@@ -85,7 +86,8 @@ namespace ApiConfig
     { anthropicApiKey := a.anthropicApiKey.orElse (fun _ => b.anthropicApiKey)
       googleApiKey := a.googleApiKey.orElse (fun _ => b.googleApiKey)
       openaiApiKey := a.openaiApiKey.orElse (fun _ => b.openaiApiKey)
-      xaiApiKey := a.xaiApiKey.orElse (fun _ => b.xaiApiKey) }
+      xaiApiKey := a.xaiApiKey.orElse (fun _ => b.xaiApiKey)
+      extras := a.extras ++ b.extras }
 
   /-- Load configuration from default locations.
       Priority: 1) ~/.ai-sdk.config 2) environment variables -/

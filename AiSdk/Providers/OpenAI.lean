@@ -7,6 +7,7 @@ import AiSdk.Types
 import AiSdk.Json
 import AiSdk.Provider
 import AiSdk.Config
+import AiSdk.Stream
 import HttpClient
 
 namespace AiSdk.OpenAI
@@ -115,9 +116,25 @@ def buildRequestJson (modelId : String) (messages : List Message) (settings : Ca
 
   Json.mkObj pairs
 
+/-- Build the request JSON for OpenAI API with streaming -/
+def buildRequestJsonWithStream (modelId : String) (messages : List Message) (settings : CallSettings) : Json :=
+  let json := buildRequestJson modelId messages settings
+  json.mergeObj (Json.mkObj [("stream", true), ("stream_options", Json.mkObj [("include_usage", true)])])
+
 /-- Construct the RawRequest -/
 def constructRequest (apiKey : String) (modelId : String) (messages : List Message) (settings : CallSettings) : RawRequest :=
   let requestJson := buildRequestJson modelId messages settings
+  let requestBody := requestJson.compress
+  {
+    method := "POST",
+    url := s!"{baseUrl}/chat/completions",
+    headers := [("Authorization", s!"Bearer {apiKey}"), ("Content-Type", "application/json")],
+    body := requestBody
+  }
+
+/-- Construct the RawRequest for streaming -/
+def constructStreamRequest (apiKey : String) (modelId : String) (messages : List Message) (settings : CallSettings) : RawRequest :=
+  let requestJson := buildRequestJsonWithStream modelId messages settings
   let requestBody := requestJson.compress
   {
     method := "POST",
@@ -188,6 +205,49 @@ def parseResponse (body : String) : ApiResult GenerateTextResult := do
           toolCalls := toolCalls
         }
 
+/-- Parse stream chunk from OpenAI -/
+def parseStreamChunk (chunkJson : Json) : Option StreamChunk :=
+  let choices := getFieldArr chunkJson "choices" |>.getD #[]
+  if choices.isEmpty then
+    -- Check for usage in the final chunk
+    match getField chunkJson "usage" with
+    | some usage =>
+      let inputTokens := getFieldNat usage "prompt_tokens" |>.getD 0
+      let outputTokens := getFieldNat usage "completion_tokens" |>.getD 0
+      -- We need a finish reason, but it's usually in the previous chunk's choice
+      -- For now, we'll emit a finish chunk with 'stop' if usage is present but no choices
+      some (.finish .stop { inputTokens, outputTokens })
+    | none => none
+  else
+    let choice := choices[0]!
+    let delta := getField choice "delta" |>.getD (Json.mkObj [])
+
+    -- Check for content delta
+    match getFieldStr delta "content" with
+    | some content => some (.textDelta content)
+    | none =>
+      -- Check for tool call delta
+      match getPathArr delta ["tool_calls"] with
+      | some calls =>
+        if calls.isEmpty then none
+        else
+          let call := calls[0]!
+          let id := getFieldStr call "id" |>.getD ""
+          let func := getField call "function" |>.getD (Json.mkObj [])
+          let args := getFieldStr func "arguments" |>.getD ""
+          if id != "" || args != "" then
+             some (.toolCallDelta id args)
+          else none
+      | none =>
+        -- Check for finish reason
+        match getFieldStr choice "finish_reason" with
+        | some reason =>
+           -- Wait for usage chunk if possible, but if we get finish_reason here, we might emit it.
+           -- However, usage usually comes in a separate final chunk with stream_options: {include_usage: true}.
+           -- So we ignore finish_reason here and wait for the usage chunk to emit .finish
+           none 
+        | none => none
+
 end Core
 
 /-- Create the generate function for OpenAI -/
@@ -222,11 +282,33 @@ private def makeGenerateFn (apiKey : String) (modelId : String) : GenerateFn :=
         else
           return .error (.httpError response.status.code response.body)
 
+/-- Create the stream function for OpenAI -/
+private def makeStreamFn (apiKey : String) (modelId : String) : StreamFn :=
+  fun messages settings => do
+    let request := Core.constructStreamRequest apiKey modelId messages settings
+    
+    -- Execute request using curl stream helper
+    let lineStream ← AiSdk.Stream.streamRequest request
+    
+    -- Map lines to StreamChunks
+    let chunkStream := lineStream.filterMap fun line => do
+      match AiSdk.Stream.parseSseLine line with
+      | some data =>
+        if data == "[DONE]" then return none
+        else
+          match Json.parse data with
+          | .ok json => return Core.parseStreamChunk json
+          | .error e => return some (.error s!"JSON parse error: {e} in line: {data}")
+      | none => return none -- Skip empty/keep-alive lines
+      
+    return .ok chunkStream
+
 /-- Create an OpenAI model -/
 def createModel (apiKey : String) (modelId : String := defaultModel) : Model :=
   { provider := .openai
     modelId := modelId
-    generateFn := makeGenerateFn apiKey modelId }
+    generateFn := makeGenerateFn apiKey modelId
+    streamFn := some (makeStreamFn apiKey modelId) }
 
 /-- Create an OpenAI model, loading API key from config -/
 def create (modelId : String := defaultModel)

@@ -9,6 +9,7 @@ import AiSdk.Types
 import AiSdk.Json
 import AiSdk.Provider
 import AiSdk.Config
+import AiSdk.Stream
 import HttpClient
 
 namespace AiSdk.Ollama
@@ -35,6 +36,7 @@ def contentPartToJson (part : ContentPart) : Json :=
   match part with
   | .text t => Json.str t -- Ollama typically just takes text or list of images separate
   | .image d _ => Json.str "" -- Images are handled separately in Ollama API usually
+  | .toolResult id res => Json.str s!"Tool Result [{id}]: {res}" -- Fallback for now
 
 /-- Build the request JSON for Ollama API -/
 def buildRequestJson (modelId : String) (messages : List Message) (settings : CallSettings) : Json :=
@@ -46,6 +48,7 @@ def buildRequestJson (modelId : String) (messages : List Message) (settings : Ca
       match part with
       | .text t => (txt ++ t, imgs)
       | .image d _ => (txt, imgs.push (Json.str d))
+      | .toolResult id res => (txt ++ s!"\nTool Result [{id}]: {res}", imgs)
     ) ("", #[])
 
     let msgObj := [
@@ -98,9 +101,25 @@ def buildRequestJson (modelId : String) (messages : List Message) (settings : Ca
 
   Json.mkObj pairs
 
+/-- Build the request JSON for Ollama API with streaming -/
+def buildRequestJsonWithStream (modelId : String) (messages : List Message) (settings : CallSettings) : Json :=
+  let json := buildRequestJson modelId messages settings
+  json.mergeObj (Json.mkObj [("stream", true)])
+
 /-- Construct the RawRequest -/
 def constructRequest (baseUrl : String) (modelId : String) (messages : List Message) (settings : CallSettings) : RawRequest :=
   let requestJson := buildRequestJson modelId messages settings
+  let requestBody := requestJson.compress
+  {
+    method := "POST",
+    url := s!"{baseUrl}/api/chat",
+    headers := [("Content-Type", "application/json")],
+    body := requestBody
+  }
+
+/-- Construct the RawRequest for streaming -/
+def constructStreamRequest (baseUrl : String) (modelId : String) (messages : List Message) (settings : CallSettings) : RawRequest :=
+  let requestJson := buildRequestJsonWithStream modelId messages settings
   let requestBody := requestJson.compress
   {
     method := "POST",
@@ -147,6 +166,22 @@ def parseResponse (body : String) : ApiResult GenerateTextResult := do
         toolCalls := [] -- Tools not yet fully supported in this simple Ollama implementation
       }
 
+/-- Parse stream chunk from Ollama -/
+def parseStreamChunk (chunkJson : Json) : Option StreamChunk :=
+  let done := getFieldBool chunkJson "done" |>.getD false
+  if done then
+    let reasonStr := getFieldStr chunkJson "done_reason" |>.getD "stop"
+    let finishReason := parseFinishReason true reasonStr
+    
+    let inputTokens := getFieldNat chunkJson "prompt_eval_count" |>.getD 0
+    let outputTokens := getFieldNat chunkJson "eval_count" |>.getD 0
+    
+    some (.finish finishReason { inputTokens, outputTokens })
+  else
+    match getPathStr chunkJson ["message", "content"] with
+    | some content => some (.textDelta content)
+    | none => none
+
 end Core
 
 /-- Create the generate function for Ollama -/
@@ -179,17 +214,35 @@ private def makeGenerateFn (baseUrl : String) (modelId : String) : GenerateFn :=
         else
           return .error (.httpError response.status.code response.body)
 
+/-- Create the stream function for Ollama -/
+private def makeStreamFn (baseUrl : String) (modelId : String) : StreamFn :=
+  fun messages settings => do
+    let request := Core.constructStreamRequest baseUrl modelId messages settings
+    
+    -- Execute request using curl stream helper
+    let lineStream ← AiSdk.Stream.streamRequest request
+    
+    -- Map lines to StreamChunks
+    let chunkStream := lineStream.filterMap fun line => do
+      -- Ollama sends one JSON object per line (NDJSON)
+      match Json.parse line with
+      | .ok json => return Core.parseStreamChunk json
+      | .error e => return some (.error s!"JSON parse error: {e} in line: {line}")
+      
+    return .ok chunkStream
+
 /-- Create an Ollama model -/
 def createModel (modelId : String := defaultModel) (baseUrl : String := defaultBaseUrl) : Model :=
   { provider := .ollama
     modelId := modelId
-    generateFn := makeGenerateFn baseUrl modelId }
+    generateFn := makeGenerateFn baseUrl modelId
+    streamFn := some (makeStreamFn baseUrl modelId) }
 
 /-- Create an Ollama model, loading config if needed (mostly for custom URL) -/
 def create (modelId : String := defaultModel) : IO (ApiResult Model) := do
   -- Ollama usually doesn't need an API key, just a URL which defaults to localhost
   let config ← ApiConfig.load
-  let baseUrl := match config.extras.get? "ollama_base_url" with
+  let baseUrl := match config.extras.lookup "ollama_base_url" with
     | some url => url
     | none => defaultBaseUrl
     
