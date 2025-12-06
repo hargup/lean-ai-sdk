@@ -1,0 +1,10 @@
+{"plugins": [],
+ "options": {},
+ "name": "AiSdk.GenerateText",
+ "isModule": false,
+ "importArts":
+ {"AiSdk.Types":
+  ["/Users/harshwork/code/thecentralhub/lean_learning/ai-sdk/.lake/build/lib/lean/AiSdk/Types.olean"],
+  "AiSdk.Provider":
+  ["/Users/harshwork/code/thecentralhub/lean_learning/ai-sdk/.lake/build/lib/lean/AiSdk/Provider.olean"]},
+ "dynlibs": []}

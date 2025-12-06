@@ -1,0 +1,27 @@
+{"synthetic": false,
+ "schemaVersion": "2025-09-10",
+ "outputs":
+ {"o": ["680cd7dc5f36bb04.olean"],
+  "i": "ac1224ae7b1b5667.ilean",
+  "c": "bc50c26984055abf.c"},
+ "log":
+ [{"message":
+   ".> LEAN_PATH=/Users/harshwork/code/thecentralhub/lean_learning/http-client/.lake/build/lib/lean:/Users/harshwork/code/thecentralhub/lean_learning/ai-sdk/.lake/build/lib/lean /Users/harshwork/.elan/toolchains/leanprover--lean4---v4.25.2/bin/lean -DautoImplicit=false /Users/harshwork/code/thecentralhub/lean_learning/ai-sdk/AiSdk/Json.lean -o /Users/harshwork/code/thecentralhub/lean_learning/ai-sdk/.lake/build/lib/lean/AiSdk/Json.olean -i /Users/harshwork/code/thecentralhub/lean_learning/ai-sdk/.lake/build/lib/lean/AiSdk/Json.ilean -c /Users/harshwork/code/thecentralhub/lean_learning/ai-sdk/.lake/build/ir/AiSdk/Json.c --setup /Users/harshwork/code/thecentralhub/lean_learning/ai-sdk/.lake/build/ir/AiSdk/Json.setup.json --json",
+   "level": "trace"}],
+ "inputs":
+ [["AiSdk.Json:deps",
+   [["deps",
+     [["«ai-sdk»/AiSdk:extraDep", [["@«ai-sdk»:extraDep", "00000000000006bb"]]],
+      ["imports", "00000000000006bb"]]],
+    ["libs",
+     [["import dynlibs", "00000000000006bb"],
+      ["package external libraries", "00000000000006bb"],
+      ["module dynlibs", "00000000000006bb"],
+      ["module plugins", "00000000000006bb"]]]]],
+  ["Lean 4.25.2, commit b86e2e5824bcdbfa0e8d02dd97b4c48792a385d1",
+   "d946543e806d8350"],
+  ["/Users/harshwork/code/thecentralhub/lean_learning/ai-sdk/AiSdk/Json.lean",
+   "2b6535e309de866d"],
+  ["options", "00000000000006bb"],
+  ["Module.leanArgs: #[-DautoImplicit=false]", "83bf8aa7a6e9844b"]],
+ "depHash": "c8562a1c46fcf7bc"}

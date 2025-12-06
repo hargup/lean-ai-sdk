@@ -1,0 +1,18 @@
+{"synthetic": false,
+ "schemaVersion": "2025-09-10",
+ "outputs": "51afb26690025b69.o",
+ "log":
+ [{"message":
+   ".> /Users/harshwork/.elan/toolchains/leanprover--lean4---v4.25.2/bin/clang -c -o /Users/harshwork/code/thecentralhub/lean_learning/ai-sdk/.lake/build/ir/AiSdk/Provider.c.o.export /Users/harshwork/code/thecentralhub/lean_learning/ai-sdk/.lake/build/ir/AiSdk/Provider.c -I /Users/harshwork/.elan/toolchains/leanprover--lean4---v4.25.2/include -fstack-clash-protection -fwrapv -fvisibility=hidden -Wno-unused-command-line-argument --sysroot /Users/harshwork/.elan/toolchains/leanprover--lean4---v4.25.2 -nostdinc -isystem /Users/harshwork/.elan/toolchains/leanprover--lean4---v4.25.2/include/clang -O3 -DNDEBUG -DLEAN_EXPORTING",
+   "level": "trace"}],
+ "inputs":
+ [["AiSdk.Provider:c",
+   [["/Users/harshwork/code/thecentralhub/lean_learning/ai-sdk/.lake/build/ir/AiSdk/Provider.c",
+     "323a9eaf8095e172"],
+    ["Lean 4.25.2, commit b86e2e5824bcdbfa0e8d02dd97b4c48792a385d1",
+     "d946543e806d8350"]]],
+  ["Lean 4.25.2, commit b86e2e5824bcdbfa0e8d02dd97b4c48792a385d1",
+   "d946543e806d8350"],
+  ["traceArgs: #[-O3, -DNDEBUG, -DLEAN_EXPORTING]", "c1efb66122fb2b9a"],
+  ["arm64-apple-darwin24.6.0", "77c16133d139df5a"]],
+ "depHash": "4ecabfa047e34c4e"}
