@@ -23,11 +23,11 @@ def processToolCalls (calls : List ToolCall) (tools : List AiSdk.Tool.Tool) : IO
     | some tool =>
       try
         let output ← tool.execute call.arguments
-        pure (Message.user s!"Tool {call.name} result: {output}") -- In reality, this should be a 'tool' role message
+        pure (Message.tool call.id output)
       catch e =>
-        pure (Message.user s!"Tool {call.name} failed: {e}")
+        pure (Message.tool call.id s!"Error: {e}")
     | none =>
-      pure (Message.user s!"Tool {call.name} not found")
+      pure (Message.tool call.id s!"Error: Tool {call.name} not found")
   pure results
 
 /-- Run a single turn of the agent loop -/

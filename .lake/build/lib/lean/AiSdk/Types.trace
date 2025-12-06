@@ -1,9 +1,9 @@
 {"synthetic": false,
  "schemaVersion": "2025-09-10",
  "outputs":
- {"o": ["cb67a94decb2e6a0.olean"],
-  "i": "8291ed536820f551.ilean",
-  "c": "1b646c32aed8823b.c"},
+ {"o": ["70d377462234ed98.olean"],
+  "i": "f7f3356b6c94f6a8.ilean",
+  "c": "c18feac5768080f9.c"},
  "log":
  [{"message":
    ".> LEAN_PATH=/Users/harshwork/code/thecentralhub/lean_learning/http-client/.lake/build/lib/lean:/Users/harshwork/code/thecentralhub/lean_learning/ai-sdk/.lake/build/lib/lean /Users/harshwork/.elan/toolchains/leanprover--lean4---v4.25.2/bin/lean -DautoImplicit=false /Users/harshwork/code/thecentralhub/lean_learning/ai-sdk/AiSdk/Types.lean -o /Users/harshwork/code/thecentralhub/lean_learning/ai-sdk/.lake/build/lib/lean/AiSdk/Types.olean -i /Users/harshwork/code/thecentralhub/lean_learning/ai-sdk/.lake/build/lib/lean/AiSdk/Types.ilean -c /Users/harshwork/code/thecentralhub/lean_learning/ai-sdk/.lake/build/ir/AiSdk/Types.c --setup /Users/harshwork/code/thecentralhub/lean_learning/ai-sdk/.lake/build/ir/AiSdk/Types.setup.json --json",
@@ -21,7 +21,7 @@
   ["Lean 4.25.2, commit b86e2e5824bcdbfa0e8d02dd97b4c48792a385d1",
    "d946543e806d8350"],
   ["/Users/harshwork/code/thecentralhub/lean_learning/ai-sdk/AiSdk/Types.lean",
-   "abff99682ea7fb52"],
+   "0d0870c7e3dd649a"],
   ["options", "00000000000006bb"],
   ["Module.leanArgs: #[-DautoImplicit=false]", "83bf8aa7a6e9844b"]],
- "depHash": "8c192e1a73a60f52"}
+ "depHash": "718f92b40558895e"}

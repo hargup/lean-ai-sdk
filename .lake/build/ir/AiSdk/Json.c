@@ -20,6 +20,7 @@ double l_Lean_JsonNumber_toFloat(lean_object*);
 LEAN_EXPORT lean_object* l_AiSdk_Json_getFieldStr(lean_object*, lean_object*);
 LEAN_EXPORT lean_object* l_AiSdk_Json_getFieldArr(lean_object*, lean_object*);
 lean_object* l_Lean_Json_getObjVal_x3f(lean_object*, lean_object*);
+LEAN_EXPORT lean_object* l_AiSdk_Json_getFieldBool(lean_object*, lean_object*);
 LEAN_EXPORT lean_object* l_AiSdk_Json_getField(lean_object*, lean_object*);
 lean_object* lean_uint64_to_nat(uint64_t);
 LEAN_EXPORT lean_object* l_AiSdk_Json_getPath___boxed(lean_object*, lean_object*);
@@ -386,6 +387,70 @@ lean_ctor_set(x_4, 1, x_3);
 x_5 = l_AiSdk_Json_getPathArr(x_1, x_4);
 lean_dec_ref(x_4);
 return x_5;
+}
+}
+LEAN_EXPORT lean_object* l_AiSdk_Json_getFieldBool(lean_object* x_1, lean_object* x_2) {
+_start:
+{
+lean_object* x_3; 
+x_3 = l_AiSdk_Json_getField(x_1, x_2);
+if (lean_obj_tag(x_3) == 0)
+{
+lean_object* x_4; 
+x_4 = lean_box(0);
+return x_4;
+}
+else
+{
+uint8_t x_5; 
+x_5 = !lean_is_exclusive(x_3);
+if (x_5 == 0)
+{
+lean_object* x_6; 
+x_6 = lean_ctor_get(x_3, 0);
+if (lean_obj_tag(x_6) == 1)
+{
+uint8_t x_7; lean_object* x_8; 
+x_7 = lean_ctor_get_uint8(x_6, 0);
+lean_dec_ref(x_6);
+x_8 = lean_box(x_7);
+lean_ctor_set(x_3, 0, x_8);
+return x_3;
+}
+else
+{
+lean_object* x_9; 
+lean_free_object(x_3);
+lean_dec(x_6);
+x_9 = lean_box(0);
+return x_9;
+}
+}
+else
+{
+lean_object* x_10; 
+x_10 = lean_ctor_get(x_3, 0);
+lean_inc(x_10);
+lean_dec(x_3);
+if (lean_obj_tag(x_10) == 1)
+{
+uint8_t x_11; lean_object* x_12; lean_object* x_13; 
+x_11 = lean_ctor_get_uint8(x_10, 0);
+lean_dec_ref(x_10);
+x_12 = lean_box(x_11);
+x_13 = lean_alloc_ctor(1, 1, 0);
+lean_ctor_set(x_13, 0, x_12);
+return x_13;
+}
+else
+{
+lean_object* x_14; 
+lean_dec(x_10);
+x_14 = lean_box(0);
+return x_14;
+}
+}
+}
 }
 }
 LEAN_EXPORT lean_object* l_AiSdk_Json_parse(lean_object* x_1) {

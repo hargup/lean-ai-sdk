@@ -20,9 +20,6 @@ def baseUrl : String := "https://api.anthropic.com"
 /-- Default model -/
 def defaultModel : String := "claude-sonnet-4-20250514"
 
-/-- Default model -/
-def defaultModel : String := "claude-sonnet-4-20250514"
-
 namespace Core
 
 /-- Convert SDK Role to Anthropic role string -/
@@ -42,6 +39,11 @@ def contentPartToJson (part : ContentPart) : Json :=
         ("media_type", mime),
         ("data", d)
       ])
+    ]
+  | .toolResult id res => Json.mkObj [
+      ("type", "tool_result"),
+      ("tool_use_id", id),
+      ("content", res)
     ]
 
 /-- Convert ToolDefinition to Anthropic JSON format -/
@@ -195,7 +197,7 @@ private def makeGenerateFn (apiKey : String) (modelId : String) : GenerateFn :=
     | none => return .error (.networkError "Failed to parse URL")
     | some url =>
       -- Build request
-      let mut httpReq := HttpClient.Request.create request.method url
+      let mut httpReq := HttpClient.Request.post url
       
       -- Add headers
       for (k, v) in request.headers do

@@ -88,6 +88,9 @@ def buildRequestJson (modelId : String) (messages : List Message) (settings : Ca
   let pairs := if optionsPairs.isEmpty then pairs
     else pairs ++ [("options", Json.mkObj optionsPairs)]
 
+  let pairs := if settings.jsonMode then pairs ++ [("format", Json.str "json")]
+    else pairs
+
   -- Tools are supported in newer Ollama versions via OpenAI compatible endpoint, 
   -- but native API also has tool support in some versions.
   -- For now, we skip tools for Ollama native implementation or minimal support.
@@ -157,7 +160,7 @@ private def makeGenerateFn (baseUrl : String) (modelId : String) : GenerateFn :=
     | none => return .error (.networkError "Failed to parse URL")
     | some url =>
       -- Build request
-      let mut httpReq := HttpClient.Request.create request.method url
+      let mut httpReq := HttpClient.Request.post url
       
       -- Add headers
       for (k, v) in request.headers do

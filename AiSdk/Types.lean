@@ -7,6 +7,11 @@ import Lean.Data.Json
 
 namespace AiSdk
 
+open Lean (Json)
+
+instance : Repr Json where
+  reprPrec j _ := j.compress
+
 /-- Supported AI Providers -/
 inductive Provider where
   | openai
@@ -67,6 +72,7 @@ open Lean (Json)
 inductive ContentPart where
   | text (text : String)
   | image (data : String) (mimeType : String) -- Base64 encoded image
+  | toolResult (toolCallId : String) (result : String)
   deriving Repr, BEq, Inhabited
 
 /-- A message in a conversation -/
@@ -91,12 +97,17 @@ namespace Message
   /-- Create an assistant message -/
   def assistant (content : String) : Message :=
     { role := .assistant, content := [.text content] }
+
+  /-- Create a tool result message (usually role is irrelevant or implicitly 'tool' based on content) -/
+  def tool (toolCallId : String) (result : String) : Message :=
+    { role := .user, content := [.toolResult toolCallId result] } -- Providers will remap role if needed
     
   /-- Helper to get text content from a message (concatenates all text parts) -/
   def textContent (m : Message) : String :=
     m.content.foldl (fun acc part =>
       match part with
       | .text t => acc ++ t
+      | .toolResult _ res => acc ++ res -- Maybe include tool results in text content?
       | _ => acc
     ) ""
 end Message
@@ -129,6 +140,8 @@ structure CallSettings where
   stopSequences : List String := []
   /-- Tools available to the model -/
   tools : List ToolDefinition := []
+  /-- Force output format (e.g. JSON) -/
+  jsonMode : Bool := false
   deriving Repr, Inhabited
 
 /-- Token usage statistics -/

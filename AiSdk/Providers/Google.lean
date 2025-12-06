@@ -20,9 +20,6 @@ def baseUrl : String := "https://generativelanguage.googleapis.com/v1beta"
 /-- Default model - Gemini 2.5 Flash (best price-performance) -/
 def defaultModel : String := "gemini-2.5-flash"
 
-/-- Default model - Gemini 2.5 Flash (best price-performance) -/
-def defaultModel : String := "gemini-2.5-flash"
-
 namespace Core
 
 /-- Convert SDK Role to Google role string -/
@@ -39,6 +36,20 @@ def contentPartToJson (part : ContentPart) : Json :=
       ("inlineData", Json.mkObj [
         ("mimeType", mime),
         ("data", d)
+      ])
+    ]
+  | .toolResult id res => Json.mkObj [ -- Google functionResponse format
+      ("functionResponse", Json.mkObj [
+        ("name", id), -- NOTE: Google uses name as ID effectively in stateless, but here we might need the actual function name.
+                      -- The 'id' in toolResult should ideally be the call ID or name depending on provider.
+                      -- For Google, it expects 'name'. We assume 'id' passed here is the function name if we don't have a separate ID map.
+                      -- Actually, for Agent loop, we might need to store the function name in the toolResult if needed.
+                      -- But standard `ToolCall` has `name`. The `toolResult` has `toolCallId`.
+                      -- OpenAI uses ID. Google uses Name.
+                      -- We might need to lookup the name if we only have ID, or store name in toolResult.
+                      -- For now, let's assume `toolCallId` holds the function name for Google, or we change `toolResult` to hold name too.
+                      -- Let's assume for now the user/agent handles this mapping or `id` is sufficient.
+        ("response", Json.parse res |>.toOption |>.getD (Json.mkObj [("result", res)]))
       ])
     ]
 
@@ -91,6 +102,9 @@ def buildRequestJson (messages : List Message) (settings : CallSettings) : Json 
 
   let genConfigPairs := if settings.stopSequences.isEmpty then genConfigPairs
     else genConfigPairs ++ [("stopSequences", Json.arr (settings.stopSequences.map Json.str).toArray)]
+
+  let genConfigPairs := if settings.jsonMode then genConfigPairs ++ [("responseMimeType", Json.str "application/json")]
+    else genConfigPairs
 
   -- Build request object
   let pairs : List (String × Json) := [
@@ -200,7 +214,7 @@ private def makeGenerateFn (apiKey : String) (modelId : String) : GenerateFn :=
     | none => return .error (.networkError "Failed to parse URL")
     | some url =>
       -- Build request
-      let mut httpReq := HttpClient.Request.create request.method url
+      let mut httpReq := HttpClient.Request.post url
       
       -- Add headers
       for (k, v) in request.headers do

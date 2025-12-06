@@ -68,6 +68,24 @@ namespace Invariants
   instance (msgs : List Message) : Decidable (msgs ≠ []) :=
     inferInstance
 
+  /-- Check if a character is valid for a tool name (alphanumeric, _, -) -/
+  def isValidToolChar (c : Char) : Bool :=
+    c.isAlphanum || c == '_' || c == '-'
+
+  /-- Check if string is valid tool name -/
+  def isValidToolName (s : String) : Bool :=
+    !s.isEmpty && s.length <= 64 && s.all isValidToolChar
+
+  /-- A string representing a valid tool name -/
+  structure ValidatedToolName where
+    value : String
+    prop : isValidToolName value = true
+    deriving Repr
+
+  /-- Smart constructor for ValidatedToolName -/
+  def mkToolName (s : String) : Option ValidatedToolName :=
+    if h : isValidToolName s then some { value := s, prop := h } else none
+
 end Invariants
 
 end AiSdk

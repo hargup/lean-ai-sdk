@@ -20,9 +20,6 @@ def baseUrl : String := "https://api.openai.com/v1"
 /-- Default model - GPT-4o (best for most tasks) -/
 def defaultModel : String := "gpt-4o"
 
-/-- Default model - GPT-4o (best for most tasks) -/
-def defaultModel : String := "gpt-4o"
-
 namespace Core
 
 /-- Convert SDK Role to OpenAI role string -/
@@ -39,6 +36,7 @@ def contentPartToJson (part : ContentPart) : Json :=
       ("type", "image_url"),
       ("image_url", Json.mkObj [("url", s!"data:{mime};base64,{d}")])
     ]
+  | .toolResult id res => Json.str res -- Handled specially in buildRequestJson
 
 /-- Convert ToolDefinition to OpenAI JSON format -/
 def toolToJson (tool : ToolDefinition) : Json :=
@@ -54,24 +52,42 @@ def toolToJson (tool : ToolDefinition) : Json :=
 /-- Build the request JSON for OpenAI API -/
 def buildRequestJson (modelId : String) (messages : List Message) (settings : CallSettings) : Json :=
   -- Build messages array
-  let messagesJson := messages.map fun msg =>
-    let contentJson := 
-      if msg.content.length == 1 then
-        match msg.content.head! with
-        | .text t => Json.str t
-        | part => Json.arr #[contentPartToJson part]
-      else
-        Json.arr (msg.content.map contentPartToJson).toArray
+  let messagesJson := messages.foldl (fun acc msg =>
+    -- Check if this message contains ONLY tool results
+    let isToolResult := msg.content.all fun p => match p with | .toolResult _ _ => true | _ => false
+    
+    if isToolResult then
+      -- Explode tool results into separate messages with role 'tool'
+      let toolMessages := msg.content.map fun p =>
+        match p with
+        | .toolResult id res => 
+          Json.mkObj [
+            ("role", Json.str "tool"),
+            ("tool_call_id", Json.str id),
+            ("content", Json.str res)
+          ]
+        | _ => Json.null -- Should not happen given filter
+      acc ++ toolMessages.toArray
+    else
+      -- Normal message
+      let contentJson := 
+        if msg.content.length == 1 then
+          match msg.content.head! with
+          | .text t => Json.str t
+          | part => Json.arr #[contentPartToJson part]
+        else
+          Json.arr (msg.content.map contentPartToJson).toArray
 
-    Json.mkObj [
-      ("role", Json.str (roleToString msg.role)),
-      ("content", contentJson)
-    ]
+      acc.push (Json.mkObj [
+        ("role", Json.str (roleToString msg.role)),
+        ("content", contentJson)
+      ])
+  ) #[]
 
   -- Start with required fields
   let pairs : List (String × Json) := [
     ("model", Json.str modelId),
-    ("messages", Json.arr messagesJson.toArray)
+    ("messages", Json.arr messagesJson)
   ]
 
   -- Add tools if present
@@ -93,6 +109,9 @@ def buildRequestJson (modelId : String) (messages : List Message) (settings : Ca
 
   let pairs := if settings.stopSequences.isEmpty then pairs
     else pairs ++ [("stop", Json.arr (settings.stopSequences.map Json.str).toArray)]
+
+  let pairs := if settings.jsonMode then pairs ++ [("response_format", Json.mkObj [("type", "json_object")])]
+    else pairs
 
   Json.mkObj pairs
 
@@ -182,7 +201,8 @@ private def makeGenerateFn (apiKey : String) (modelId : String) : GenerateFn :=
     | none => return .error (.networkError "Failed to parse URL")
     | some url =>
       -- Build request from RawRequest
-      let mut httpReq := HttpClient.Request.create request.method url
+      -- Currently only POST is supported/used
+      let mut httpReq := HttpClient.Request.post url
       
       -- Add headers
       for (k, v) in request.headers do

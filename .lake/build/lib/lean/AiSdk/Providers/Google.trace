@@ -1,12 +1,12 @@
 {"synthetic": false,
  "schemaVersion": "2025-09-10",
  "outputs":
- {"o": ["8cdb48b638bb942d.olean"],
-  "i": "71d4f8bf1c00eeaa.ilean",
-  "c": "076909e89d38456c.c"},
+ {"o": ["13dcb669e5407f96.olean"],
+  "i": "85f862f90973fa1d.ilean",
+  "c": "2af8c15ba4f9ef97.c"},
  "log":
  [{"message":
-   ".> LEAN_PATH=/Users/harshwork/code/thecentralhub/lean_learning/http-client/.lake/build/lib/lean:/Users/harshwork/code/thecentralhub/lean_learning/ai-sdk/.lake/build/lib/lean:/Users/harshwork/code/thecentralhub/lean_learning/cli-ai/.lake/build/lib/lean /Users/harshwork/.elan/toolchains/leanprover--lean4---v4.25.2/bin/lean -DautoImplicit=false /Users/harshwork/code/thecentralhub/lean_learning/ai-sdk/AiSdk/Providers/Google.lean -o /Users/harshwork/code/thecentralhub/lean_learning/ai-sdk/.lake/build/lib/lean/AiSdk/Providers/Google.olean -i /Users/harshwork/code/thecentralhub/lean_learning/ai-sdk/.lake/build/lib/lean/AiSdk/Providers/Google.ilean -c /Users/harshwork/code/thecentralhub/lean_learning/ai-sdk/.lake/build/ir/AiSdk/Providers/Google.c --setup /Users/harshwork/code/thecentralhub/lean_learning/ai-sdk/.lake/build/ir/AiSdk/Providers/Google.setup.json --json",
+   ".> LEAN_PATH=/Users/harshwork/code/thecentralhub/lean_learning/http-client/.lake/build/lib/lean:/Users/harshwork/code/thecentralhub/lean_learning/ai-sdk/.lake/build/lib/lean /Users/harshwork/.elan/toolchains/leanprover--lean4---v4.25.2/bin/lean -DautoImplicit=false /Users/harshwork/code/thecentralhub/lean_learning/ai-sdk/AiSdk/Providers/Google.lean -o /Users/harshwork/code/thecentralhub/lean_learning/ai-sdk/.lake/build/lib/lean/AiSdk/Providers/Google.olean -i /Users/harshwork/code/thecentralhub/lean_learning/ai-sdk/.lake/build/lib/lean/AiSdk/Providers/Google.ilean -c /Users/harshwork/code/thecentralhub/lean_learning/ai-sdk/.lake/build/ir/AiSdk/Providers/Google.c --setup /Users/harshwork/code/thecentralhub/lean_learning/ai-sdk/.lake/build/ir/AiSdk/Providers/Google.setup.json --json",
    "level": "trace"}],
  "inputs":
  [["AiSdk.Providers.Google:deps",
@@ -14,13 +14,13 @@
      [["«ai-sdk»/AiSdk:extraDep", [["@«ai-sdk»:extraDep", "00000000000006bb"]]],
       ["imports",
        [["AiSdk.Types transitive imports (legacy)", "00000000000006bb"],
-        ["AiSdk.Types:importAllArts", "3c87f87aafc53aee"],
+        ["AiSdk.Types:importAllArts", "db660698a8336fc3"],
         ["AiSdk.Json transitive imports (legacy)", "00000000000006bb"],
-        ["AiSdk.Json:importAllArts", "f7875b9de398ba22"],
-        ["AiSdk.Provider transitive imports (legacy)", "613db95323ccf88e"],
-        ["AiSdk.Provider:importAllArts", "8a91f276bd42a3f9"],
-        ["AiSdk.Config transitive imports (legacy)", "613db95323ccf88e"],
-        ["AiSdk.Config:importAllArts", "89142aec252df3e0"],
+        ["AiSdk.Json:importAllArts", "851c2e55c01d672e"],
+        ["AiSdk.Provider transitive imports (legacy)", "2b4fa5f00b82b1a7"],
+        ["AiSdk.Provider:importAllArts", "9407a24f33174591"],
+        ["AiSdk.Config transitive imports (legacy)", "2b4fa5f00b82b1a7"],
+        ["AiSdk.Config:importAllArts", "a4997dec892a73c5"],
         ["HttpClient transitive imports (legacy)", "ecc9a33992ea3a47"],
         ["HttpClient:importAllArts", "bbd3d9c2a609eebf"]]]]],
     ["libs",
@@ -31,7 +31,7 @@
   ["Lean 4.25.2, commit b86e2e5824bcdbfa0e8d02dd97b4c48792a385d1",
    "d946543e806d8350"],
   ["/Users/harshwork/code/thecentralhub/lean_learning/ai-sdk/AiSdk/Providers/Google.lean",
-   "60a2ca4fc878f101"],
+   "910f81a25deff247"],
   ["options", "00000000000006bb"],
   ["Module.leanArgs: #[-DautoImplicit=false]", "83bf8aa7a6e9844b"]],
- "depHash": "647b5a356b1506d3"}
+ "depHash": "f4dc6be1c112e74c"}

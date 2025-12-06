@@ -1747,8 +1747,8 @@ if (lean_is_scalar(x_7)) {
 } else {
  x_14 = x_7;
 }
-lean_ctor_set(x_14, 0, x_11);
-lean_ctor_set(x_14, 1, x_10);
+lean_ctor_set(x_14, 0, x_10);
+lean_ctor_set(x_14, 1, x_11);
 lean_ctor_set(x_14, 2, x_12);
 lean_ctor_set(x_14, 3, x_13);
 return x_14;
@@ -1762,8 +1762,8 @@ if (lean_is_scalar(x_7)) {
 } else {
  x_15 = x_7;
 }
-lean_ctor_set(x_15, 0, x_11);
-lean_ctor_set(x_15, 1, x_10);
+lean_ctor_set(x_15, 0, x_10);
+lean_ctor_set(x_15, 1, x_11);
 lean_ctor_set(x_15, 2, x_12);
 lean_ctor_set(x_15, 3, x_6);
 return x_15;
@@ -1775,16 +1775,16 @@ if (lean_obj_tag(x_5) == 0)
 {
 lean_object* x_20; 
 x_20 = l_AiSdk_ApiConfig_merge___lam__0(x_17);
-x_10 = x_19;
-x_11 = x_18;
+x_10 = x_18;
+x_11 = x_19;
 x_12 = x_20;
 goto block_16;
 }
 else
 {
 lean_dec_ref(x_17);
-x_10 = x_19;
-x_11 = x_18;
+x_10 = x_18;
+x_11 = x_19;
 x_12 = x_5;
 goto block_16;
 }
