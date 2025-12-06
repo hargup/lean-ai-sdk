@@ -1,8 +1,0 @@
-{"plugins": [],
- "options": {},
- "name": "AiSdk.Config",
- "isModule": false,
- "importArts":
- {"AiSdk.Types":
-  ["/Users/harshwork/code/thecentralhub/lean_learning/ai-sdk/.lake/build/lib/lean/AiSdk/Types.olean"]},
- "dynlibs": []}
